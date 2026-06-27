@@ -110,18 +110,31 @@ SIIResult DecryptData(const uint8_t* input, size_t inputSize,
     std::vector<uint8_t> decrypted(inputSize);
     size_t decryptedLen = 0;
 
-    if (aes256_decrypt_cbc(SII_KEY, header.InitVector,
-                           input, inputSize,
-                           decrypted.data(), &decryptedLen) != 0)
+    int aesRet = aes256_decrypt_cbc(SII_KEY, header.InitVector,
+                                    input, inputSize,
+                                    decrypted.data(), &decryptedLen);
+    if (aesRet != 0) {
+        printf("  AES decrypt FAILED (error code %d)\n", aesRet);
+        printf("  Ciphertext: %zu bytes (must be multiple of 16, remainder = %zu)\n",
+               inputSize, inputSize % 16);
         return rGenericError;
+    }
 
     /* Step 2 — DEFLATE decompress */
     size_t destLen = (size_t)header.DataSize;
     uint8_t* decompressed = (uint8_t*)malloc(destLen);
     if (!decompressed) return rGenericError;
 
-    if (zlib_decompress(decrypted.data(), decryptedLen,
-                        decompressed, &destLen) != 0) {
+    int infRet = zlib_decompress(decrypted.data(), decryptedLen,
+                                 decompressed, &destLen);
+    if (infRet != 0) {
+        printf("  Decompress FAILED (error code %d)\n", infRet);
+        printf("  Compressed: %zu bytes, expected decompressed: %zu bytes\n",
+               decryptedLen, destLen);
+        printf("  First 32 bytes of compressed data: ");
+        for (size_t i = 0; i < 32 && i < decryptedLen; i++)
+            printf("%02X ", decrypted[i]);
+        printf("\n");
         free(decompressed);
         return rGenericError;
     }

@@ -4,6 +4,7 @@
 
 #include "sii_decryptor.h"
 #include "sii_format.h"
+#include "sii_bin_decoder.h"
 
 #include <cstdio>
 #include <cstring>
@@ -204,10 +205,26 @@ SIIResult SIIDecryptor::DecodeMemory(const uint8_t* input, size_t inSize,
     if (!input || !outSize) return rGenericError;
 
     SIIResult fmt = GetStreamFormat(input, inSize, 0);
+    if (fmt == rFormatBinary) {
+        /* Binary SII → decode to text */
+        std::string text = SIIBinDecoder::Convert(input, inSize, DecodeUnsupported);
+        if (!output) {
+            if (helperBuf) {
+                helperBuf->assign((const uint8_t*)text.data(),
+                                  (const uint8_t*)text.data() + text.size());
+                *outSize = helperBuf->size();
+            } else *outSize = text.size();
+            return rSuccess;
+        }
+        if (*outSize < text.size()) return rBufferTooSmall;
+        memcpy(output, text.data(), text.size());
+        *outSize = text.size();
+        return rSuccess;
+    }
+
     if (fmt != rFormat3nK) {
         if (fmt == rFormatEncrypted) return rFormatEncrypted;
         if (fmt == rFormatPlainText) return rFormatPlainText;
-        if (fmt == rFormatBinary)    return rFormatBinary;
         if (fmt == rFormatUnknown || fmt == rTooFewData) return fmt;
         return rFormatUnknown;
     }
@@ -260,8 +277,15 @@ SIIResult SIIDecryptor::DecodeFile(const char* inputFile, const char* outputFile
     if (!ReadFile(inputFile, inBuf)) return rGenericError;
 
     SIIResult fmt = GetStreamFormat(inBuf.data(), inBuf.size(), 0);
+
+    /* Binary SII → decode to text */
+    if (fmt == rFormatBinary) {
+        std::string text = SIIBinDecoder::Convert(inBuf.data(), inBuf.size(), DecodeUnsupported);
+        return WriteFile(outputFile, (const uint8_t*)text.data(), text.size()) ? rSuccess : rGenericError;
+    }
+
     if (fmt != rFormat3nK) {
-        if (fmt == rFormatPlainText || fmt == rFormatBinary) return fmt;
+        if (fmt == rFormatPlainText) return rFormatPlainText;
         if (fmt == rFormatEncrypted) return rFormatEncrypted;
         return fmt;
     }
@@ -353,7 +377,26 @@ SIIResult SIIDecryptor::DecryptAndDecodeMemory(
             return rSuccess;
         }
 
-        /* Plain-text or other — return decrypted data as-is */
+        /* Binary — decode to text */
+        if (innerFmt == rFormatBinary) {
+            std::string text = SIIBinDecoder::Convert(decData, decSize, DecodeUnsupported);
+            free(decData);
+
+            if (!output) {
+                if (helperBuf) {
+                    helperBuf->assign((const uint8_t*)text.data(),
+                                      (const uint8_t*)text.data() + text.size());
+                    *outSize = helperBuf->size();
+                } else *outSize = text.size();
+                return rSuccess;
+            }
+            if (*outSize < text.size()) return rBufferTooSmall;
+            memcpy(output, text.data(), text.size());
+            *outSize = text.size();
+            return rSuccess;
+        }
+
+        /* Plain-text — return decrypted data as-is */
         if (!output) {
             if (helperBuf) {
                 helperBuf->assign(decData, decData + decSize);
@@ -387,7 +430,7 @@ SIIResult SIIDecryptor::DecryptAndDecodeMemory(
         return rSuccess;
 
     case rFormatBinary:
-        return rFormatBinary;
+        return DecodeMemory(input, inSize, output, outSize, helperBuf);
 
     default:
         return fmt;
