@@ -1,0 +1,53 @@
+; ============================================================================
+;  SII Decrypt - DLL Export Definition
+;
+;  Ensures correct export names regardless of calling convention mangling.
+; ============================================================================
+
+EXPORTS
+    ; Standalone functions
+    APIVersion
+    GetMemoryFormat
+    GetFileFormat
+    IsEncryptedMemory
+    IsEncryptedFile
+    IsEncodedMemory
+    IsEncodedFile
+    Is3nKEncodedMemory
+    Is3nKEncodedFile
+    DecryptMemory
+    DecryptFile
+    DecryptFileInMemory
+    DecodeMemoryHelper
+    DecodeMemory
+    DecodeFile
+    DecodeFileInMemory
+    DecryptAndDecodeMemoryHelper
+    DecryptAndDecodeMemory
+    DecryptAndDecodeFile
+    DecryptAndDecodeFileInMemory
+    FreeHelper
+
+    ; Object functions (API v1.1)
+    Decryptor_Create
+    Decryptor_Free
+    Decryptor_GetOptionBool
+    Decryptor_SetOptionBool
+    Decryptor_SetProgressCallback
+    Decryptor_GetMemoryFormat
+    Decryptor_GetFileFormat
+    Decryptor_IsEncryptedMemory
+    Decryptor_IsEncryptedFile
+    Decryptor_IsEncodedMemory
+    Decryptor_IsEncodedFile
+    Decryptor_Is3nKEncodedMemory
+    Decryptor_Is3nKEncodedFile
+    Decryptor_DecryptMemory
+    Decryptor_DecryptFile
+    Decryptor_DecryptFileInMemory
+    Decryptor_DecodeMemory
+    Decryptor_DecodeFile
+    Decryptor_DecodeFileInMemory
+    Decryptor_DecryptAndDecodeMemory
+    Decryptor_DecryptAndDecodeFile
+    Decryptor_DecryptAndDecodeFileInMemory
