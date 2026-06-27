@@ -10,7 +10,8 @@
 
 #define SII_DECRYPT_DLL_EXPORTS
 #include "sii_decrypt.h"
-#include "sii_core.h"
+#include "core/sii_decryptor.h"
+#include "core/sii_format.h"
 
 #include <cstdlib>
 #include <cstring>

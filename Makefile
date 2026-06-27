@@ -1,15 +1,7 @@
 # ============================================================================
 #  SII Decrypt - Makefile (GCC/MinGW-w64, Windows cmd)
 #
-#  This Source Code Form is subject to the terms of the Mozilla Public
-#  License, v. 2.0. If a copy of the MPL was not distributed with this
-#  file, You can obtain one at http://mozilla.org/MPL/2.0/.
-#
-#  Prerequisites:
-#    - MinGW-w64 (g++) on PATH
-#    - OpenSSL static lib:  ./libs/openssl/lib/libcrypto.a
-#    - zlib static lib:     ./libs/zlib/lib/libz.a
-#    - Headers are in:      ./libs/openssl/include/  and  ./libs/zlib/include/
+#  Zero external dependencies — AES-256 + DEFLATE are self-contained.
 #
 #  Targets:
 #    mingw32-make all       — build DLL + console program
@@ -18,61 +10,57 @@
 #    mingw32-make clean     — remove build artifacts
 # ============================================================================
 
-# Use cmd.exe as the shell for all recipes
 SHELL = cmd.exe
 
 # --- Toolchain -----------------------------------------------------------
 
-CXX        = g++
-STRIP      = strip
+CXX      = g++
 
 # --- Paths ---------------------------------------------------------------
 
-SRC_DIR    = src
-INC_DIR    = include
-LIBS_DIR   = libs
-BUILD_DIR  = build
-
-# OpenSSL (shipped with project)
-OPENSSL_DIR = $(LIBS_DIR)/openssl
-OPENSSL_INC = $(OPENSSL_DIR)/include
-OPENSSL_LIB = $(OPENSSL_DIR)/lib
-
-# zlib (shipped with project)
-ZLIB_DIR    = $(LIBS_DIR)/zlib
-ZLIB_INC    = $(ZLIB_DIR)/include
-ZLIB_LIB    = $(ZLIB_DIR)/lib
+INC_DIR  = include
+SRC_DIR  = src
+BLD_DIR  = build
 
 # --- Compiler flags ------------------------------------------------------
 
-CXXFLAGS   = -std=c++11 -Wall -Wextra -O2 -fvisibility=hidden
-CXXFLAGS  += -I$(INC_DIR) -I$(SRC_DIR)
-CXXFLAGS  += -I$(OPENSSL_INC) -I$(ZLIB_INC)
+CXXFLAGS  = -std=c++11 -Wall -Wextra -O2 -fvisibility=hidden
+CXXFLAGS += -I$(INC_DIR)
+CXXFLAGS += -I$(SRC_DIR) -I$(SRC_DIR)/core -I$(SRC_DIR)/crypto -I$(SRC_DIR)/compress
 
-# Linker flags — static link with shipped libraries
-LDFLAGS    = -static -L$(OPENSSL_LIB) -L$(ZLIB_LIB)
-LDLIBS     = -lcrypto -lz -lws2_32 -lcrypt32 -lgdi32
+# --- Linker flags --------------------------------------------------------
+
+LDFLAGS   = -static
+LDLIBS    =
 
 # DLL flags
-DEF_FILE   = $(SRC_DIR)/sii_decrypt.def
-DLL_LDFLAGS = -shared -static-libgcc -static-libstdc++ \
-              -Wl,$(DEF_FILE) \
-              -Wl,--out-implib,$(BUILD_DIR)/libsii_decrypt.a
+DEF_FILE  = $(SRC_DIR)/sii_decrypt.def
+DLL_FLAGS = -shared -static-libgcc -static-libstdc++ \
+            -Wl,$(DEF_FILE) \
+            -Wl,--out-implib,$(BLD_DIR)/libsii_decrypt.a
 
 # --- Source files --------------------------------------------------------
 
-CORE_SRC   = $(SRC_DIR)/sii_core.cpp
-DLL_SRC    = $(SRC_DIR)/sii_dll.cpp
-CONSOLE_SRC= $(SRC_DIR)/sii_console.cpp
+AES_SRC      = $(SRC_DIR)/crypto/aes256.cpp
+INFLATE_SRC  = $(SRC_DIR)/compress/inflate.cpp
+FORMAT_SRC   = $(SRC_DIR)/core/sii_format.cpp
+DECRYPTOR_SRC= $(SRC_DIR)/core/sii_decryptor.cpp
+DLL_SRC      = $(SRC_DIR)/sii_dll.cpp
+CONSOLE_SRC  = $(SRC_DIR)/sii_console.cpp
 
-CORE_OBJ   = $(BUILD_DIR)/sii_core.o
-DLL_OBJ    = $(BUILD_DIR)/sii_dll.o
-CONSOLE_OBJ= $(BUILD_DIR)/sii_console.o
+# --- Object files --------------------------------------------------------
+
+AES_OBJ      = $(BLD_DIR)/aes256.o
+INFLATE_OBJ  = $(BLD_DIR)/inflate.o
+FORMAT_OBJ   = $(BLD_DIR)/sii_format.o
+DECRYPTOR_OBJ= $(BLD_DIR)/sii_decryptor.o
+DLL_OBJ      = $(BLD_DIR)/sii_dll.o
+CONSOLE_OBJ  = $(BLD_DIR)/sii_console.o
 
 # --- Output targets ------------------------------------------------------
 
-DLL_TARGET  = $(BUILD_DIR)/sii_decrypt.dll
-EXE_TARGET  = $(BUILD_DIR)/sii_decrypt.exe
+DLL_TARGET   = $(BLD_DIR)/sii_decrypt.dll
+EXE_TARGET   = $(BLD_DIR)/sii_decrypt.exe
 
 # --- Phony targets -------------------------------------------------------
 
@@ -80,47 +68,55 @@ EXE_TARGET  = $(BUILD_DIR)/sii_decrypt.exe
 
 all: dll console
 
-# ============================================================================
-#  Build targets
-# ============================================================================
-
-dll: $(DLL_TARGET)
-
+dll:     $(DLL_TARGET)
 console: $(EXE_TARGET)
+
+# Objects linked into every binary
+COMMON = $(AES_OBJ) $(INFLATE_OBJ) $(FORMAT_OBJ) $(DECRYPTOR_OBJ)
 
 # --- DLL ----------------------------------------------------------------
 
-$(DLL_TARGET): $(CORE_OBJ) $(DLL_OBJ) $(DEF_FILE) | $(BUILD_DIR)
-	$(CXX) $(DLL_OBJ) $(CORE_OBJ) -o $(DLL_TARGET) $(DLL_LDFLAGS) $(LDFLAGS) $(LDLIBS)
+$(DLL_TARGET): $(COMMON) $(DLL_OBJ) $(DEF_FILE) | $(BLD_DIR)
+	$(CXX) $(DLL_OBJ) $(COMMON) -o $@ $(DLL_FLAGS) $(LDFLAGS) $(LDLIBS)
 
 # --- Console EXE ---------------------------------------------------------
 
-$(EXE_TARGET): $(CORE_OBJ) $(CONSOLE_OBJ) | $(BUILD_DIR)
-	$(CXX) $(CONSOLE_OBJ) $(CORE_OBJ) -o $(EXE_TARGET) $(LDFLAGS) $(LDLIBS)
+$(EXE_TARGET): $(COMMON) $(CONSOLE_OBJ) | $(BLD_DIR)
+	$(CXX) $(CONSOLE_OBJ) $(COMMON) -o $@ $(LDFLAGS) $(LDLIBS)
 
-# --- Object files --------------------------------------------------------
+# --- Object rules --------------------------------------------------------
 
-$(CORE_OBJ): $(CORE_SRC) $(SRC_DIR)/sii_core.h
-	$(CXX) $(CXXFLAGS) -c $(CORE_SRC) -o $(CORE_OBJ)
+$(AES_OBJ): $(AES_SRC) $(SRC_DIR)/crypto/aes256.h | $(BLD_DIR)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-$(DLL_OBJ): $(DLL_SRC) $(INC_DIR)/sii_decrypt.h $(SRC_DIR)/sii_core.h
-	$(CXX) $(CXXFLAGS) -DSII_DECRYPT_DLL_EXPORTS -c $(DLL_SRC) -o $(DLL_OBJ)
+$(INFLATE_OBJ): $(INFLATE_SRC) $(SRC_DIR)/compress/inflate.h | $(BLD_DIR)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-$(CONSOLE_OBJ): $(CONSOLE_SRC) $(SRC_DIR)/sii_core.h
-	$(CXX) $(CXXFLAGS) -c $(CONSOLE_SRC) -o $(CONSOLE_OBJ)
+$(FORMAT_OBJ): $(FORMAT_SRC) $(SRC_DIR)/core/sii_types.h $(SRC_DIR)/core/sii_format.h \
+               $(SRC_DIR)/crypto/aes256.h $(SRC_DIR)/compress/inflate.h | $(BLD_DIR)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+$(DECRYPTOR_OBJ): $(DECRYPTOR_SRC) $(SRC_DIR)/core/sii_types.h $(SRC_DIR)/core/sii_decryptor.h \
+                  $(SRC_DIR)/core/sii_format.h | $(BLD_DIR)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+$(DLL_OBJ): $(DLL_SRC) $(INC_DIR)/sii_decrypt.h $(SRC_DIR)/core/sii_decryptor.h | $(BLD_DIR)
+	$(CXX) $(CXXFLAGS) -DSII_DECRYPT_DLL_EXPORTS -c $< -o $@
+
+$(CONSOLE_OBJ): $(CONSOLE_SRC) $(SRC_DIR)/core/sii_types.h $(SRC_DIR)/core/sii_format.h \
+                $(SRC_DIR)/crypto/aes256.h $(SRC_DIR)/compress/inflate.h | $(BLD_DIR)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 # --- Build directory -----------------------------------------------------
 
-$(BUILD_DIR):
-	@if not exist "$(BUILD_DIR)" mkdir "$(BUILD_DIR)"
+$(BLD_DIR):
+	@if not exist "$(BLD_DIR)" mkdir "$(BLD_DIR)"
 
-# ============================================================================
-#  Clean
-# ============================================================================
+# --- Clean ---------------------------------------------------------------
 
 clean:
-	@if exist "$(BUILD_DIR)\*.o"   del /q "$(BUILD_DIR)\*.o"
-	@if exist "$(BUILD_DIR)\*.a"   del /q "$(BUILD_DIR)\*.a"
-	@if exist "$(BUILD_DIR)\*.dll" del /q "$(BUILD_DIR)\*.dll"
-	@if exist "$(BUILD_DIR)\*.exe" del /q "$(BUILD_DIR)\*.exe"
+	@if exist "$(BLD_DIR)\*.o"   del /q "$(BLD_DIR)\*.o"
+	@if exist "$(BLD_DIR)\*.a"   del /q "$(BLD_DIR)\*.a"
+	@if exist "$(BLD_DIR)\*.dll" del /q "$(BLD_DIR)\*.dll"
+	@if exist "$(BLD_DIR)\*.exe" del /q "$(BLD_DIR)\*.exe"
 	@echo Clean complete.

@@ -11,18 +11,23 @@
  *
  *  Commands:
  *    --no_decode    Decrypt only (no 3nK decode)
- *    --sw_aes       Software-only AES (accepted but uses OpenSSL defaults)
+ *    --sw_aes       Software-only AES (accepted; AES is always software now)
  *    --on_file      Stream from disk (same behaviour as default)
  *    --wait         Wait for user keypress after processing
  */
 
-#include "sii_core.h"
+#include "core/sii_types.h"
+#include "core/sii_format.h"
+#include "core/sii_decryptor.h"
+#include "crypto/aes256.h"
+#include "compress/inflate.h"
 
 #include <stdint.h>
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
 #include <string>
+#include <vector>
 
 /* --------------------------------------------------------------------------
  *  Result code → text
@@ -162,25 +167,130 @@ int main(int argc, char* argv[])
         }
     }
 
-    (void)swAes;   /* OpenSSL handles AES-NI automatically */
+    (void)swAes;   /* AES is always self-contained software implementation */
     (void)onFile;  /* Same behaviour either way */
 
-    /* --- Execute --- */
-    printf("\nPlease wait...\n");
+    /* --- Execute (with diagnostic output) --- */
+    printf("\n--- Diagnostic trace ---\n");
 
     SIIDecryptor dec;
     dec.ReraiseExceptions = true;
 
-    SIIResult res;
+    /* Step 1: check file format */
+    SIIResult fmt = dec.GetFileFormat(inFile.c_str());
+    printf("[1] File format: %s (%d)\n", ResultText(ResultToInt(fmt)), (int)fmt);
 
-    if (noDecode) {
-        res = dec.DecryptFile(inFile.c_str(), outFile.c_str());
-    } else {
-        res = dec.DecryptAndDecodeFile(inFile.c_str(), outFile.c_str());
+    if (fmt != rFormatEncrypted && fmt != rFormat3nK) {
+        printf("Nothing to process. Exiting.\n");
+        return (int)fmt;
+    }
+
+    /* Step 2: read file */
+    std::vector<uint8_t> inBuf;
+    {
+        FILE* f = fopen(inFile.c_str(), "rb");
+        if (!f) { printf("ERROR: cannot open file\n"); return -1; }
+        fseek(f, 0, SEEK_END);
+        long sz = ftell(f);
+        fseek(f, 0, SEEK_SET);
+        inBuf.resize(sz);
+        fread(inBuf.data(), 1, sz, f);
+        fclose(f);
+        printf("[2] Read %ld bytes from file\n", sz);
+    }
+
+    SIIResult res = rGenericError;
+
+    if (fmt == rFormatEncrypted) {
+        /* Step 3: verify header and AES-decrypt */
+        if (inBuf.size() < sizeof(SIIHeader)) {
+            printf("ERROR: file too small for header\n"); return -1;
+        }
+
+        SIIHeader header;
+        memcpy(&header, inBuf.data(), sizeof(SIIHeader));
+        printf("[3] Header: sig=0x%08X, dataSize=%u\n",
+               header.Signature, header.DataSize);
+
+        const uint8_t* cipher = inBuf.data() + sizeof(SIIHeader);
+        size_t cipherLen = inBuf.size() - sizeof(SIIHeader);
+        printf("[4] Ciphertext length: %zu bytes (must be multiple of 16)\n", cipherLen);
+
+        size_t decLen = 0;
+        std::vector<uint8_t> decBuf(cipherLen);
+        int aesRet = aes256_decrypt_cbc(SII_KEY, header.InitVector,
+                                        cipher, cipherLen,
+                                        decBuf.data(), &decLen);
+        if (aesRet != 0) {
+            printf("ERROR: AES decryption failed (code %d)\n", aesRet);
+            printf("  cipherLen mod 16 = %zu\n", cipherLen % 16);
+            return -1;
+        }
+        printf("[5] AES decrypt OK, decrypted+unpadded = %zu bytes\n", decLen);
+
+        /* Step 4: inflate */
+        size_t decompLen = (size_t)header.DataSize;
+        std::vector<uint8_t> decompBuf(decompLen);
+        int infRet = zlib_decompress(decBuf.data(), decLen,
+                                      decompBuf.data(), &decompLen);
+        if (infRet != 0) {
+            printf("ERROR: zlib decompress failed (code %d)\n", infRet);
+            /* hex dump first 32 bytes of decrypted data */
+            printf("  First 32 bytes of decrypted data: ");
+            for (size_t i = 0; i < 32 && i < decLen; i++)
+                printf("%02X ", decBuf[i]);
+            printf("\n");
+            return -1;
+        }
+        printf("[6] Zlib decompress OK, decompressed = %zu bytes\n", decompLen);
+
+        /* Step 5: check if 3nK encoded, write output */
+        SIIResult innerFmt = DetectFormat(decompBuf.data(), decompLen);
+        printf("[7] Inner format after decrypt: %s (%d)\n",
+               ResultText(ResultToInt(innerFmt)), (int)innerFmt);
+
+        if (innerFmt == rFormat3nK && !noDecode) {
+            /* 3nK decode */
+            SII3nKHeader h3;
+            memcpy(&h3, decompBuf.data(), sizeof(h3));
+            size_t payloadLen = decompLen - sizeof(h3);
+            std::vector<uint8_t> decodedBuf(payloadLen);
+            Decode3nK(decompBuf.data() + sizeof(h3), payloadLen,
+                      decodedBuf.data(), h3.Seed);
+            printf("[8] 3nK decoded, output = %zu bytes\n", payloadLen);
+
+            FILE* fo = fopen(outFile.c_str(), "wb");
+            if (!fo) { printf("ERROR: cannot write output\n"); return -1; }
+            fwrite(decodedBuf.data(), 1, payloadLen, fo);
+            fclose(fo);
+        } else {
+            FILE* fo = fopen(outFile.c_str(), "wb");
+            if (!fo) { printf("ERROR: cannot write output\n"); return -1; }
+            fwrite(decompBuf.data(), 1, decompLen, fo);
+            fclose(fo);
+        }
+        res = rSuccess;
+
+    } else if (fmt == rFormat3nK) {
+        /* Just decode 3nK */
+        printf("[3] 3nK file, size = %zu\n", inBuf.size());
+        SII3nKHeader h3;
+        memcpy(&h3, inBuf.data(), sizeof(h3));
+        printf("[4] 3nK header: seed=0x%02X\n", h3.Seed);
+        size_t payloadLen = inBuf.size() - sizeof(h3);
+        std::vector<uint8_t> decodedBuf(payloadLen);
+        Decode3nK(inBuf.data() + sizeof(h3), payloadLen,
+                  decodedBuf.data(), h3.Seed);
+        printf("[5] 3nK decoded OK\n");
+
+        FILE* fo = fopen(outFile.c_str(), "wb");
+        if (!fo) { printf("ERROR: cannot write output\n"); return -1; }
+        fwrite(decodedBuf.data(), 1, payloadLen, fo);
+        fclose(fo);
+        res = rSuccess;
     }
 
     int32_t result = ResultToInt(res);
-
     printf("\nResult: %s (%d)\n", ResultText(result), (int)result);
 
     if (waitKey) {
