@@ -3,9 +3,8 @@
  *
  *  Implements: AES-256 key expansion, CBC-mode decryption, PKCS#7 unpadding.
  *
- *  This Source Code Form is subject to the terms of the Mozilla Public
- *  License, v. 2.0. If a copy of the MPL was not distributed with this
- *  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *  Licensed under the MIT License.
+ *  See the LICENSE file in the project root for details.
  */
 
 #ifndef AES256_H

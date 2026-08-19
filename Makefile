@@ -22,7 +22,7 @@ INC_DIR  = include
 SRC_DIR  = src
 BLD_DIR  = build
 
-# --- Compiler flags (max optimization, self-contained, 64-bit) -----------
+# --- Compiler flags (max optimization, self-contained, 32-bit) -----------
 
 CXXFLAGS  = -m32 -std=c++11 -Wall -Wextra -O3
 CXXFLAGS += -fomit-frame-pointer -ffunction-sections -fdata-sections

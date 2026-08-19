@@ -4,9 +4,8 @@
  *  Implements: RFC 1950 (zlib) + RFC 1951 (DEFLATE).
  *  Supports all three block types: stored, fixed Huffman, dynamic Huffman.
  *
- *  This Source Code Form is subject to the terms of the Mozilla Public
- *  License, v. 2.0. If a copy of the MPL was not distributed with this
- *  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *  Licensed under the MIT License.
+ *  See the LICENSE file in the project root for details.
  */
 
 #ifndef INFLATE_H
