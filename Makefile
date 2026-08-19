@@ -1,5 +1,5 @@
 # ============================================================================
-#  SII Decrypt - Makefile (GCC/MinGW-w64, Windows cmd)
+#  SII Decrypt
 #
 #  Zero external dependencies — AES-256 + DEFLATE are self-contained.
 #
@@ -14,7 +14,7 @@ SHELL = cmd.exe
 
 # --- Toolchain -----------------------------------------------------------
 
-CXX      = C:\Tools\mingw32\bin\g++.exe
+CXX      = $(mingw32)\g++.exe
 
 # --- Paths ---------------------------------------------------------------
 
