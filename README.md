@@ -1,24 +1,22 @@
-<div align="center">
-
 # SII Decrypt (C++)
 
-*A C++ rewrite of the discontinued Pascal project [SII_Decrypt](https://github.com/TheLazyTomcat/SII_Decrypt) by TheLazyTomcat, with support for newer game versions.*
+> *A C++ rewrite of the discontinued Pascal project [SII_Decrypt](https://github.com/TheLazyTomcat/SII_Decrypt) by TheLazyTomcat, with support for newer game versions.*
 
-![Version](https://img.shields.io/badge/version-1.5.3-blue)
+![Version](https://img.shields.io/badge/version-1.0.0-blue)
 ![Language](https://img.shields.io/badge/language-C%2B%2B11-f34b7d)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platform](https://img.shields.io/badge/platform-Windows-0078D6)
-![Dependencies](https://img.shields.io/badge/dependencies-none-brightgreen)
 ![Games](https://img.shields.io/badge/games-ETS2%20%7C%20ATS-orange)
-![API](https://img.shields.io/badge/DLL%20API-v1.1-9cf)
 
 Languages: [简体中文](README.zh-CN.md) | **English**
-
-</div>
 
 SII Decrypt converts **Euro Truck Simulator 2** and **American Truck Simulator** save files into human-readable plain-text SII, so they can be inspected, edited, and used with save-game tools.
 
 ---
+
+## Preview
+![Main](./images/decrypt1.png)
+![Decrypt](./images/decrypt2.png)
 
 ## Table of Contents
 
@@ -102,9 +100,9 @@ Targets:
 
 | Target | Output |
 |--------|--------|
-| `make all` | `build\sii_decrypt.dll` + `build\sii_decrypt.exe` |
-| `make dll` | `build\sii_decrypt.dll` (+ import library `libsii_decrypt.a`) |
-| `make console` | `build\sii_decrypt.exe` |
+| `make all` | `build\SII_Decrypt.dll` + `build\SII_Decrypt.exe` |
+| `make dll` | `build\SII_Decrypt.dll` (+ import library `build\lib\libsii_decrypt.a`) |
+| `make console` | `build\SII_Decrypt.exe` |
 | `make clean` | remove build artifacts |
 
 Both binaries are fully static and stripped (no MinGW runtime DLLs required).
@@ -129,13 +127,13 @@ If no output file is given, the decrypted result **overwrites the input file**.
 
 ```bat
 REM Decrypt and decode, overwriting the original
-sii_decrypt.exe "C:\Users\me\Documents\Euro Truck Simulator 2\profiles\4D61696E\save\1\game.sii"
+SII_Decrypt.exe "C:\Users\me\Documents\Euro Truck Simulator 2\profiles\4D61696E\save\1\game.sii"
 
 REM Write the result to a separate file
-sii_decrypt.exe -i "game.sii" -o "game_decrypted.sii"
+SII_Decrypt.exe -i "game.sii" -o "game_decrypted.sii"
 
 REM Decrypt only, keep the 3nK-encoded payload
-sii_decrypt.exe --no_decode -i "game.sii" -o "game_decrypted_only.sii"
+SII_Decrypt.exe --no_decode -i "game.sii" -o "game_decrypted_only.sii"
 ```
 
 Save files are located at:
@@ -223,7 +221,7 @@ SII-Decrypt-cpp/
 │   ├── sii_console.cpp        Console program
 │   ├── sii_dll.cpp            DLL entry points (C API wrapper)
 │   └── sii_decrypt.def        DLL export definition
-├── Makefile                   MinGW build (DLL + console, zero dependencies)
+├── Makefile                   MinGW build
 └── LICENSE                    MIT License
 ```
 
@@ -233,6 +231,6 @@ SII-Decrypt-cpp/
 
 ## License
 
-[MIT License](LICENSE) — Copyright (c) 2026 Liam Dong.
+This project is licensed under the [MIT License](LICENSE)
 
-This project is an independent, community tool and is not affiliated with or endorsed by SCS Software.
+Copyright © 2026 <a href="https://github.com/liam-dong">Liam Dong</a>.

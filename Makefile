@@ -21,6 +21,8 @@ CXX      = $(mingw32)\g++.exe
 INC_DIR  = include
 SRC_DIR  = src
 BLD_DIR  = build
+BIN_DIR  = $(BLD_DIR)/bin
+LIB_DIR  = $(BLD_DIR)/lib
 
 # --- Compiler flags (max optimization, self-contained, 32-bit) -----------
 
@@ -38,7 +40,7 @@ LD_COMMON = -static -static-libgcc -static-libstdc++ -s -Wl,--gc-sections
 DEF_FILE  = $(SRC_DIR)/sii_decrypt.def
 DLL_FLAGS = -shared \
             -Wl,$(DEF_FILE) \
-            -Wl,--out-implib,$(BLD_DIR)/libsii_decrypt.a
+            -Wl,--out-implib,$(LIB_DIR)/libsii_decrypt.a
 
 # --- Source files --------------------------------------------------------
 
@@ -68,8 +70,8 @@ CONSOLE_OBJ   = $(BLD_DIR)/sii_console.o
 
 # --- Output targets ------------------------------------------------------
 
-DLL_TARGET   = $(BLD_DIR)/sii_decrypt.dll
-EXE_TARGET   = $(BLD_DIR)/sii_decrypt.exe
+DLL_TARGET   = $(BIN_DIR)/SII_Decrypt.dll
+EXE_TARGET   = $(BIN_DIR)/SII_Decrypt.exe
 
 # --- Phony targets -------------------------------------------------------
 
@@ -86,12 +88,12 @@ COMMON = $(AES_OBJ) $(INFLATE_OBJ) $(FORMAT_OBJ) $(BIN_UTILS_OBJ) $(BIN_VALUE_OB
 
 # --- DLL ----------------------------------------------------------------
 
-$(DLL_TARGET): $(COMMON) $(DLL_OBJ) $(DEF_FILE) | $(BLD_DIR)
+$(DLL_TARGET): $(COMMON) $(DLL_OBJ) $(DEF_FILE) | $(BIN_DIR) $(LIB_DIR)
 	$(CXX) $(DLL_OBJ) $(COMMON) -o $@ $(DLL_FLAGS) $(LD_COMMON)
 
 # --- Console EXE ---------------------------------------------------------
 
-$(EXE_TARGET): $(COMMON) $(CONSOLE_OBJ) | $(BLD_DIR)
+$(EXE_TARGET): $(COMMON) $(CONSOLE_OBJ) | $(BIN_DIR)
 	$(CXX) $(CONSOLE_OBJ) $(COMMON) -o $@ $(LD_COMMON)
 
 # --- Object rules --------------------------------------------------------
@@ -132,16 +134,15 @@ $(CONSOLE_OBJ): $(CONSOLE_SRC) $(SRC_DIR)/core/sii_types.h $(SRC_DIR)/core/sii_f
                 $(SRC_DIR)/crypto/aes256.h $(SRC_DIR)/compress/inflate.h | $(BLD_DIR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-# --- Build directory -----------------------------------------------------
+# --- Build directories ---------------------------------------------------
 
-$(BLD_DIR):
-	@if not exist "$(BLD_DIR)" mkdir "$(BLD_DIR)"
+$(BLD_DIR) $(BIN_DIR) $(LIB_DIR):
+	@if not exist "$@" mkdir "$@"
 
 # --- Clean ---------------------------------------------------------------
 
 clean:
 	@if exist "$(BLD_DIR)\*.o"   del /q "$(BLD_DIR)\*.o"
-	@if exist "$(BLD_DIR)\*.a"   del /q "$(BLD_DIR)\*.a"
-	@if exist "$(BLD_DIR)\*.dll" del /q "$(BLD_DIR)\*.dll"
-	@if exist "$(BLD_DIR)\*.exe" del /q "$(BLD_DIR)\*.exe"
+	@if exist "$(LIB_DIR)\*.a"   del /q "$(LIB_DIR)\*.a"
+	@if exist "$(BIN_DIR)" rd /s /q "$(BIN_DIR)"
 	@echo Clean complete.

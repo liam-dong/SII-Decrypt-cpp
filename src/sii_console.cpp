@@ -63,9 +63,9 @@ static const char *ResultText(int32_t code)
 static void PrintBanner()
 {
     printf("************************************\n");
-    printf("*    SII Decrypt program 1.5.3     *\n");
+    printf("*    SII Decrypt program 1.0.0     *\n");
     printf("*       (c) 2026 Liam Dong         *\n");
-    // printf("*      C++ port (GCC/MinGW)        *\n");
+    printf("*      C++ port (GCC/MinGW)        *\n");
     printf("************************************\n");
 }
 
@@ -76,7 +76,7 @@ static void PrintBanner()
 static void PrintUsage()
 {
     printf("\n");
-    printf("usage (see readme.txt for more details):\n");
+    printf("usage:\n");
     printf("\n");
     printf("  SII_Decrypt.exe InputFile [OutputFile]\n");
     printf("  SII_Decrypt.exe [commands] -i InputFile [-o OutputFile]\n");
@@ -106,10 +106,10 @@ int main(int argc, char *argv[])
     std::string inFile;
     std::string outFile;
 
-    /* Detect mode: if any argument starts with "--", we're in extended mode */
+    /* Detect mode: if any argument starts with "-", we're in extended mode */
     for (int i = 1; i < argc; ++i)
     {
-        if (strncmp(argv[i], "--", 2) == 0)
+        if (argv[i][0] == '-')
         {
             hasCommands = true;
             break;
@@ -205,7 +205,8 @@ int main(int argc, char *argv[])
     SIIResult fmt = dec.GetFileFormat(inFile.c_str());
     printf("[1] File format: %s (%d)\n", ResultText(ResultToInt(fmt)), (int)fmt);
 
-    if (fmt != rFormatEncrypted && fmt != rFormat3nK && fmt != rFormatBinary)
+    if (fmt != rFormatEncrypted && fmt != rFormat3nK && fmt != rFormatBinary &&
+        fmt != rFormatPlainText)
     {
         printf("Nothing to process. Exiting.\n");
         return (int)fmt;
@@ -340,27 +341,78 @@ int main(int argc, char *argv[])
         memcpy(&h3, inBuf.data(), sizeof(h3));
         printf("[4] 3nK header: seed=0x%02X\n", h3.Seed);
         size_t payloadLen = inBuf.size() - sizeof(h3);
-        std::vector<uint8_t> decodedBuf(payloadLen);
-        Decode3nK(inBuf.data() + sizeof(h3), payloadLen,
-                  decodedBuf.data(), h3.Seed);
-        printf("[5] 3nK decoded OK\n");
 
-        FILE *fo = fopen(outFile.c_str(), "wb");
-        if (!fo)
+        if (noDecode)
         {
-            printf("ERROR: cannot write output\n");
-            return -1;
+            /* Decode skipped: copy input as-is */
+            printf("[5] Decode skipped (--no_decode), copying as-is\n");
+
+            FILE *fo = fopen(outFile.c_str(), "wb");
+            if (!fo)
+            {
+                printf("ERROR: cannot write output\n");
+                return -1;
+            }
+            fwrite(inBuf.data(), 1, inBuf.size(), fo);
+            fclose(fo);
         }
-        fwrite(decodedBuf.data(), 1, payloadLen, fo);
-        fclose(fo);
+        else
+        {
+            std::vector<uint8_t> decodedBuf(payloadLen);
+            Decode3nK(inBuf.data() + sizeof(h3), payloadLen,
+                      decodedBuf.data(), h3.Seed);
+            printf("[5] 3nK decoded OK\n");
+
+            FILE *fo = fopen(outFile.c_str(), "wb");
+            if (!fo)
+            {
+                printf("ERROR: cannot write output\n");
+                return -1;
+            }
+            fwrite(decodedBuf.data(), 1, payloadLen, fo);
+            fclose(fo);
+        }
         res = rSuccess;
     }
     else if (fmt == rFormatBinary)
     {
         /* Decode binary SII */
         printf("[3] Binary SII file, size = %zu\n", inBuf.size());
-        std::string text = SIIBinDecoder::Convert(inBuf.data(), inBuf.size(), false);
-        printf("[4] Binary decoded, text size = %zu\n", text.size());
+
+        if (noDecode)
+        {
+            /* Decode skipped: copy input as-is */
+            printf("[4] Decode skipped (--no_decode), copying as-is\n");
+
+            FILE *fo = fopen(outFile.c_str(), "wb");
+            if (!fo)
+            {
+                printf("ERROR: cannot write output\n");
+                return -1;
+            }
+            fwrite(inBuf.data(), 1, inBuf.size(), fo);
+            fclose(fo);
+        }
+        else
+        {
+            std::string text = SIIBinDecoder::Convert(inBuf.data(), inBuf.size(), false);
+            printf("[4] Binary decoded, text size = %zu\n", text.size());
+
+            FILE *fo = fopen(outFile.c_str(), "wb");
+            if (!fo)
+            {
+                printf("ERROR: cannot write output\n");
+                return -1;
+            }
+            fwrite(text.data(), 1, text.size(), fo);
+            fclose(fo);
+        }
+        res = rSuccess;
+    }
+    else if (fmt == rFormatPlainText)
+    {
+        /* Plain text — already decoded, copy to output as-is */
+        printf("[3] Already plain-text SII, copying as-is\n");
 
         FILE *fo = fopen(outFile.c_str(), "wb");
         if (!fo)
@@ -368,7 +420,7 @@ int main(int argc, char *argv[])
             printf("ERROR: cannot write output\n");
             return -1;
         }
-        fwrite(text.data(), 1, text.size(), fo);
+        fwrite(inBuf.data(), 1, inBuf.size(), fo);
         fclose(fo);
         res = rSuccess;
     }

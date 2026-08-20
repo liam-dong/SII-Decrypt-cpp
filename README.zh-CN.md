@@ -1,24 +1,22 @@
-<div align="center">
-
 # SII Decrypt (C++)
 
-*已停更的 Pascal 项目 [SII_Decrypt](https://github.com/TheLazyTomcat/SII_Decrypt)(作者 TheLazyTomcat)的 C++ 重写版,并在此基础上增加了对新版游戏的支持。*
+> *已停更的 Pascal 项目 [SII_Decrypt](https://github.com/TheLazyTomcat/SII_Decrypt)(作者 TheLazyTomcat)的 C++ 重写版,并在此基础上增加了对新版游戏的支持。*
 
-![Version](https://img.shields.io/badge/version-1.5.3-blue)
+![Version](https://img.shields.io/badge/version-1.0.0-blue)
 ![Language](https://img.shields.io/badge/language-C%2B%2B11-f34b7d)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platform](https://img.shields.io/badge/platform-Windows-0078D6)
-![Dependencies](https://img.shields.io/badge/dependencies-none-brightgreen)
 ![Games](https://img.shields.io/badge/games-ETS2%20%7C%20ATS-orange)
-![API](https://img.shields.io/badge/DLL%20API-v1.1-9cf)
 
 Languages: **简体中文** | [English](README.md)
-
-</div>
 
 SII Decrypt 可以把**欧洲卡车模拟 2**(Euro Truck Simulator 2)和**美洲卡车模拟**(American Truck Simulator)的存档文件转换为可读的纯文本 SII,便于查看、编辑以及配合各类存档工具使用。
 
 ---
+
+##预览
+![Main](./images/decrypt1.png)
+![Decrypt](./images/decrypt2.png)
 
 ## 目录
 
@@ -47,7 +45,7 @@ SII Decrypt 可以把**欧洲卡车模拟 2**(Euro Truck Simulator 2)和**美洲
 
 ## 支持的格式
 
-游戏在历次更新中多次更换过存档格式。本工具会自动识别格式,并全部支持:
+游戏有多种存档格式。本工具会自动识别格式,并全部支持:
 
 | 签名 | 格式 | 处理方式 |
 |-----------|--------|----------|
@@ -102,9 +100,9 @@ mingw32-make all mingw32=C:\Tools\mingw32\bin
 
 | 目标 | 产物 |
 |--------|--------|
-| `make all` | `build\sii_decrypt.dll` + `build\sii_decrypt.exe` |
-| `make dll` | `build\sii_decrypt.dll`(+导入库 `libsii_decrypt.a`) |
-| `make console` | `build\sii_decrypt.exe` |
+| `make all` | `build\SII_Decrypt.dll` + `build\SII_Decrypt.exe` |
+| `make dll` | `build\SII_Decrypt.dll`(+导入库 `build\lib\libsii_decrypt.a`) |
+| `make console` | `build\SII_Decrypt.exe` |
 | `make clean` | 清理构建产物 |
 
 两个二进制文件均为完全静态、去除符号的版本(不需要 MinGW 运行时 DLL)。
@@ -129,13 +127,13 @@ SII_Decrypt.exe [commands] -i InputFile [-o OutputFile]
 
 ```bat
 REM 解密并解码,覆盖原文件
-sii_decrypt.exe "C:\Users\me\Documents\Euro Truck Simulator 2\profiles\4D61696E\save\1\game.sii"
+SII_Decrypt.exe "C:\Users\me\Documents\Euro Truck Simulator 2\profiles\4D61696E\save\1\game.sii"
 
 REM 将结果写入单独的文件
-sii_decrypt.exe -i "game.sii" -o "game_decrypted.sii"
+SII_Decrypt.exe -i "game.sii" -o "game_decrypted.sii"
 
 REM 只解密,保留 3nK 编码后的数据
-sii_decrypt.exe --no_decode -i "game.sii" -o "game_decrypted_only.sii"
+SII_Decrypt.exe --no_decode -i "game.sii" -o "game_decrypted_only.sii"
 ```
 
 存档文件位于:
@@ -223,7 +221,7 @@ SII-Decrypt-cpp/
 │   ├── sii_console.cpp        控制台程序
 │   ├── sii_dll.cpp            DLL 入口点(C API 封装)
 │   └── sii_decrypt.def        DLL 导出定义
-├── Makefile                   MinGW 构建(DLL + 控制台,零依赖)
+├── Makefile                   MinGW 构建
 └── LICENSE                    MIT 许可证
 ```
 
@@ -233,6 +231,6 @@ SII-Decrypt-cpp/
 
 ## 许可证
 
-[MIT 许可证](LICENSE) —— 版权所有 (c) 2026 Liam Dong。
+本项目使用[MIT 许可证](LICENSE)
 
-本项目是独立的社区工具,与 SCS Software 无关,亦未获其认可。
+Copyright © 2026 <a href="https://github.com/liam-dong">Liam Dong</a>.
