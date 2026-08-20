@@ -142,7 +142,7 @@ $(BLD_DIR) $(BIN_DIR) $(LIB_DIR):
 # --- Clean ---------------------------------------------------------------
 
 clean:
-	@if exist "$(BLD_DIR)\*.o"   del /q "$(BLD_DIR)\*.o"
-	@if exist "$(LIB_DIR)\*.a"   del /q "$(LIB_DIR)\*.a"
+	@if exist "$(BLD_DIR)\*.o" del /q "$(BLD_DIR)\*.o"
+	@if exist "$(LIB_DIR)" rd /s /q "$(LIB_DIR)"
 	@if exist "$(BIN_DIR)" rd /s /q "$(BIN_DIR)"
 	@echo Clean complete.

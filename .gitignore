@@ -1,4 +1,9 @@
 .claude/
+.vscode/
 build/
 test_files/
 docs/
+*.exe
+*.dll
+*.o
+*.a
